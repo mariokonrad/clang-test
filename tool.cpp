@@ -7,6 +7,7 @@
 #include <clang/Tooling/CommonOptionsParser.h>
 #include <iostream>
 #include <sstream>
+#include <set>
 
 // maybe it helps:
 //   http://clang.llvm.org/docs/RAVFrontendAction.html
@@ -143,14 +144,51 @@ class TestConsumer : public clang::ASTConsumer
 		}
 };
 
+class TestFrontendAction : public clang::ASTFrontendAction
+{
+	public:
+		virtual clang::ASTConsumer * CreateASTConsumer(
+				clang::CompilerInstance & compiler,
+				llvm::StringRef filename)
+		{
+			return new TestConsumer(&compiler.getASTContext());
+		}
+};
+
+class TestFrontendActionFactory : public clang::tooling::FrontendActionFactory
+{
+	public:
+		virtual clang::FrontendAction * create()
+		{
+			return new TestFrontendAction;
+		}
+};
+
+// --------------------------------------------------------------------------------
 
 class NamespaceRecursiveASTVisitor : public clang::RecursiveASTVisitor<NamespaceRecursiveASTVisitor>
 {
 	private:
+		clang::ASTContext * context;
+		std::set<std::string> & namespaces;
+	private:
 		void collect_namespace_hierarchy(clang::DeclContext * d, std::ostringstream & os) const;
+		bool is_decl_in_system_header(clang::NamespaceDecl * d) const;
 	public:
+		explicit NamespaceRecursiveASTVisitor(
+				clang::ASTContext * context,
+				std::set<std::string> & namespaces)
+			: context(context)
+			, namespaces(namespaces)
+		{}
+
 		bool VisitNamespaceDecl(clang::NamespaceDecl * d);
 };
+
+bool NamespaceRecursiveASTVisitor::is_decl_in_system_header(clang::NamespaceDecl * d) const
+{
+	return context->getFullLoc(d->getLocStart()).isInSystemHeader();
+}
 
 void NamespaceRecursiveASTVisitor::collect_namespace_hierarchy(
 		clang::DeclContext * d,
@@ -169,63 +207,102 @@ void NamespaceRecursiveASTVisitor::collect_namespace_hierarchy(
 		return; // should not happen
 
 	collect_namespace_hierarchy(d->getParent(), os);
-	os << "::" << nsd->getName().str();
+	os << "::";
+	if (nsd->isAnonymousNamespace()) {
+		os << "<anon>";
+	} else {
+		os << nsd->getName().str();
+	}
 }
 
 bool NamespaceRecursiveASTVisitor::VisitNamespaceDecl(clang::NamespaceDecl * d)
 {
+	if (is_decl_in_system_header(d))
+		return true;
+
 	clang::DeclContext * context = d;
 	std::ostringstream os;
 	collect_namespace_hierarchy(d, os);
-	std::cout
-		<< context->getDeclKindName() << ": "
-		<< os.str()
-		<< std::endl;
+	namespaces.insert(os.str());
 	return true;
 }
 
 class NamespaceASTConsumer : public clang::ASTConsumer
 {
+	private:
+		clang::ASTContext * context;
+		std::set<std::string> & namespaces;
 	public:
+		explicit NamespaceASTConsumer(
+				clang::ASTContext * context,
+				std::set<std::string> & namespaces)
+			: clang::ASTConsumer()
+			, context(context)
+			, namespaces(namespaces)
+		{}
+
+		virtual ~NamespaceASTConsumer()
+		{}
+
 		virtual bool HandleTopLevelDecl(clang::DeclGroupRef d);
 };
 
 bool NamespaceASTConsumer::HandleTopLevelDecl(clang::DeclGroupRef d)
 {
-	NamespaceRecursiveASTVisitor visitor;
+	NamespaceRecursiveASTVisitor visitor(context, namespaces);
 	for (clang::DeclGroupRef::iterator b = d.begin(), e = d.end(); b != e; ++b) {
 		visitor.TraverseDecl(*b);
 	}
 	return true;
 }
 
-
-
-class TestFrontendAction : public clang::ASTFrontendAction
+class NamespaceFrontendAction : public clang::ASTFrontendAction
 {
+	private:
+		std::set<std::string> & namespaces;
 	public:
+		NamespaceFrontendAction(std::set<std::string> & namespaces)
+			: namespaces(namespaces)
+		{}
+
 		virtual clang::ASTConsumer * CreateASTConsumer(
 				clang::CompilerInstance & compiler,
 				llvm::StringRef filename)
 		{
-//			return new TestConsumer(&compiler.getASTContext());
-			return new NamespaceASTConsumer;
+			return new NamespaceASTConsumer(&compiler.getASTContext(), namespaces);
 		}
 };
 
-class TestFrontendActionFactory : public clang::tooling::FrontendActionFactory
+class NamespaceFrontendActionFactory : public clang::tooling::FrontendActionFactory
 {
+	private:
+		std::set<std::string> namespaces;
 	public:
 		virtual clang::FrontendAction * create()
 		{
-			return new TestFrontendAction;
+			return new NamespaceFrontendAction(namespaces);
+		}
+
+		const std::set<std::string> & get_namespaces() const
+		{
+			return namespaces;
 		}
 };
+
+// --------------------------------------------------------------------------------
 
 int main(int argc, const char ** argv)
 {
 	clang::tooling::CommonOptionsParser options(argc, argv);
 	clang::tooling::ClangTool tool(options.GetCompilations(), options.GetSourcePathList());
-	return tool.run(new TestFrontendActionFactory);
+
+//	return tool.run(new TestFrontendActionFactory);
+
+	NamespaceFrontendActionFactory factory;
+	int rc = tool.run(&factory);
+	for (auto ns : factory.get_namespaces()) {
+		std::cout << ns << std::endl;
+	}
+	return rc;
 }
 
