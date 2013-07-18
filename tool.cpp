@@ -1,10 +1,12 @@
-#include <clang/Tooling/CommonOptionsParser.h>
 #include <clang/AST/ASTConsumer.h>
 #include <clang/AST/ASTContext.h>
+#include <clang/AST/RecursiveASTVisitor.h>
 #include <clang/Parse/Parser.h>
 #include <clang/Frontend/CompilerInstance.h>
 #include <clang/Tooling/Tooling.h>
+#include <clang/Tooling/CommonOptionsParser.h>
 #include <iostream>
+#include <sstream>
 
 // maybe it helps:
 //   http://clang.llvm.org/docs/RAVFrontendAction.html
@@ -141,6 +143,64 @@ class TestConsumer : public clang::ASTConsumer
 		}
 };
 
+
+class NamespaceRecursiveASTVisitor : public clang::RecursiveASTVisitor<NamespaceRecursiveASTVisitor>
+{
+	private:
+		void collect_namespace_hierarchy(clang::DeclContext * d, std::ostringstream & os) const;
+	public:
+		bool VisitNamespaceDecl(clang::NamespaceDecl * d);
+};
+
+void NamespaceRecursiveASTVisitor::collect_namespace_hierarchy(
+		clang::DeclContext * d,
+		std::ostringstream & os) const
+{
+	using namespace clang;
+
+	if (!d)
+		return;
+
+	if (d->getDeclKind() != Decl::Namespace)
+		return;
+
+	NamespaceDecl * nsd = dyn_cast<NamespaceDecl>(d);
+	if (!nsd)
+		return; // should not happen
+
+	collect_namespace_hierarchy(d->getParent(), os);
+	os << "::" << nsd->getName().str();
+}
+
+bool NamespaceRecursiveASTVisitor::VisitNamespaceDecl(clang::NamespaceDecl * d)
+{
+	clang::DeclContext * context = d;
+	std::ostringstream os;
+	collect_namespace_hierarchy(d, os);
+	std::cout
+		<< context->getDeclKindName() << ": "
+		<< os.str()
+		<< std::endl;
+	return true;
+}
+
+class NamespaceASTConsumer : public clang::ASTConsumer
+{
+	public:
+		virtual bool HandleTopLevelDecl(clang::DeclGroupRef d);
+};
+
+bool NamespaceASTConsumer::HandleTopLevelDecl(clang::DeclGroupRef d)
+{
+	NamespaceRecursiveASTVisitor visitor;
+	for (clang::DeclGroupRef::iterator b = d.begin(), e = d.end(); b != e; ++b) {
+		visitor.TraverseDecl(*b);
+	}
+	return true;
+}
+
+
+
 class TestFrontendAction : public clang::ASTFrontendAction
 {
 	public:
@@ -148,7 +208,8 @@ class TestFrontendAction : public clang::ASTFrontendAction
 				clang::CompilerInstance & compiler,
 				llvm::StringRef filename)
 		{
-			return new TestConsumer(&compiler.getASTContext());
+//			return new TestConsumer(&compiler.getASTContext());
+			return new NamespaceASTConsumer;
 		}
 };
 
