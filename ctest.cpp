@@ -4,7 +4,9 @@ extern "C" {
 }
 
 #include <string>
+#include <vector>
 #include <iostream>
+#include <iomanip>
 
 static std::string to_string(CXString str)
 {
@@ -31,6 +33,10 @@ struct Location
 		filename = to_string(clang_getFileName(file));
 	}
 
+	bool is_in_system_header(void) const;
+
+	friend std::ostream & operator<<(std::ostream &, const Location &);
+
 	CXSourceLocation source_location;
 	std::string filename;
 	unsigned int line;
@@ -38,19 +44,42 @@ struct Location
 	unsigned int offset;
 };
 
-static void dump(FILE * stream, CXCursor cursor, unsigned int level)
+bool Location::is_in_system_header(void) const
 {
+	return clang_Location_isInSystemHeader(source_location);
+}
+
+std::ostream & operator<<(std::ostream & os, const Location & loc)
+{
+	return os
+		<< loc.filename
+		<< ":"
+		<< loc.line
+		<< ":"
+		<< loc.column
+		;
+}
+
+static void dump(std::ostream & os, CXCursor cursor, unsigned int level)
+{
+	using namespace std;
+
 	std::string s = to_string(clang_getCursorSpelling(cursor));
 	std::string ks = to_string(clang_getCursorKindSpelling(clang_getCursorKind(cursor)));
 
 	Location loc(cursor);
-	fprintf(stream, "%40s : %3u : %20s : %s:%u:%u\n",
-		s.c_str(),
-		level,
-		ks.c_str(),
-		loc.filename.c_str(),
-		loc.line,
-		loc.column);
+	os
+		<< setw(40) << setfill(' ')
+		<< s
+		<< " : "
+		<< setw(3) << setfill(' ')
+		<< level
+		<< " : "
+		<< setw(30) << setfill(' ')
+		<< ks
+		<< " : "
+		<< loc
+		<< std::endl;
 }
 
 static CXChildVisitResult visitor_autorecursion(
@@ -59,7 +88,7 @@ static CXChildVisitResult visitor_autorecursion(
 		CXClientData data)
 {
 	unsigned int level = *static_cast<unsigned int *>(data);
-	dump(stdout, cursor, level);
+	dump(std::cout, cursor, level);
 	return CXChildVisit_Recurse;
 }
 
@@ -108,65 +137,101 @@ static CXChildVisitResult count_method_parameters(
 	return CXChildVisit_Continue;
 }
 
+static void visit_ClassDecl(CXCursor cursor, CXCursor parent)
+{
+	std::string base_classes;
+
+	clang_visitChildren(cursor, collect_base_classes, &base_classes);
+
+	std::cerr << "CLASS: "
+		<< collect_namespaces_for(parent)
+		<< to_string(clang_getCursorSpelling(cursor))
+		<< " (" << to_string(clang_getCursorUSR(cursor)) << ")"
+		<< " based on {" << base_classes << "}"
+		<< " at " << Location(cursor)
+		<< std::endl;
+}
+
+static void visit_MethodDecl(CXCursor cursor, CXCursor parent)
+{
+	unsigned int num_params = 0;
+
+	clang_visitChildren(cursor, count_method_parameters, &num_params);
+
+	std::cerr << "METHOD: "
+		<< collect_namespaces_for(parent)
+		<< to_string(clang_getCursorSpelling(cursor))
+		<< " " << num_params
+		<< " (" << to_string(clang_getCursorUSR(cursor)) << ")"
+		<< " at " << Location(cursor)
+		<< std::endl;
+}
+
+static void visit_Function(CXCursor cursor, CXCursor parent)
+{
+	unsigned int num_params = 0;
+
+	clang_visitChildren(cursor, count_method_parameters, &num_params);
+
+	std::cerr << "FUNCTION: "
+		<< collect_namespaces_for(parent)
+		<< to_string(clang_getCursorSpelling(cursor))
+		<< " " << num_params
+		<< " (" << to_string(clang_getCursorUSR(cursor)) << ")"
+		<< " at " << Location(cursor)
+		<< std::endl;
+}
+
 static CXChildVisitResult visitor_recursive(
 		CXCursor cursor,
 		CXCursor parent,
 		CXClientData data)
 {
-	Location loc(cursor);
-
-	// ignore system headers/code
-	if (clang_Location_isInSystemHeader(loc.source_location))
+	if (Location(cursor).is_in_system_header())
 		return CXChildVisit_Continue;
 
 	unsigned int * level = static_cast<unsigned int *>(data);
-	dump(stdout, cursor, *level);
+	dump(std::cout, cursor, *level);
 
-	std::string s = to_string(clang_getCursorSpelling(cursor));
-	std::string usr = to_string(clang_getCursorUSR(cursor));
+	switch (clang_getCursorKind(cursor)) {
+		case CXCursor_ClassDecl:
+			visit_ClassDecl(cursor, parent);
+			break;
 
-	if (clang_getCursorKind(cursor) == CXCursor_ClassDecl) {
-		std::string base_classes;
-		clang_visitChildren(cursor, collect_base_classes, &base_classes);
-		fprintf(stderr, "CLASS: %s%s (%s) based on {%s} in %s\n",
-			collect_namespaces_for(parent).c_str(),
-			s.c_str(),
-			usr.c_str(),
-			base_classes.c_str(),
-			loc.filename.c_str());
-	}
+		case CXCursor_CXXMethod:
+std::cerr
+	<< "DECL:" << clang_isDeclaration(clang_getCursorKind(cursor))
+	<< " DEF:" << clang_isCursorDefinition(cursor)
+	<< std::endl;
+//			if (!clang_isCursorDefinition(cursor))
+				visit_MethodDecl(cursor, parent);
+			break;
 
-	if (clang_getCursorKind(cursor) == CXCursor_CXXMethod
-		&& !clang_isCursorDefinition(cursor)) {
-		unsigned int num_params = 0;
-		clang_visitChildren(cursor, count_method_parameters, &num_params);
+		case CXCursor_FunctionDecl:
+			if (clang_isCursorDefinition(cursor))
+				visit_Function(cursor, parent);
+			break;
 
-		fprintf(stderr, "METHOD: %s%s %u (%s) in %s\n",
-			collect_namespaces_for(parent).c_str(),
-			s.c_str(),
-			num_params,
-			usr.c_str(),
-			loc.filename.c_str());
+		default:
+			break;
 	}
 
 	*level += 1;
 	clang_visitChildren(cursor, visitor_recursive, data);
 	*level -= 1;
+
 	return CXChildVisit_Continue;
 }
 
-int main(int argc, char ** argv)
+static void process_file(CXIndex & index, const std::string & filename, int argc, char ** argv)
 {
-	CXIndex index = clang_createIndex(0, 0);
 	CXTranslationUnit tu = clang_parseTranslationUnit(
-		index, 0, argv, argc, 0, 0, CXTranslationUnit_None);
+		index, filename.c_str(), argv, argc, 0, 0, CXTranslationUnit_None);
 
 	unsigned int n = clang_getNumDiagnostics(tu);
 	for (unsigned int i = 0; i != n; ++i) {
 		CXDiagnostic diag = clang_getDiagnostic(tu, i);
-		std::string s = to_string(clang_formatDiagnostic(diag,
-			clang_defaultDiagnosticDisplayOptions()));
-		printf("%s\n", s.c_str());
+		std::cout << to_string(clang_formatDiagnostic(diag, clang_defaultDiagnosticDisplayOptions())) << std::endl;
 	}
 
 	unsigned int level = 0;
@@ -176,6 +241,28 @@ int main(int argc, char ** argv)
 		&level);
 
 	clang_disposeTranslationUnit(tu);
+}
+
+int main(int argc, char ** argv)
+{
+	CXIndex index = clang_createIndex(0, 0);
+
+	std::vector<std::string> files;
+	for (; argc > 1; --argc, ++argv) {
+		if (argv[1] == std::string("--")) {
+			++argv;
+			--argc;
+			break;
+		}
+		files.push_back(argv[1]);
+	}
+
+	++argv;
+	--argc;
+
+	for (auto filename : files)
+		process_file(index, filename, argc, argv);
+
 	clang_disposeIndex(index);
 	return 0;
 }

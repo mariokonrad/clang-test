@@ -86,6 +86,7 @@ class TestConsumer : public clang::ASTConsumer
 					<< i->getDeclName().getAsString()
 					<< " -> "
 					<< i->getResultType().getAsString()
+					<< " (has body:" << i->hasBody() << ")"
 					<< std::endl;
 				dump_function_parameters(*i);
 			}
@@ -101,20 +102,9 @@ class TestConsumer : public clang::ASTConsumer
 				std::cout << "    " << i->getNameAsString() << std::endl;
 			}
 		}
-	private:
-		clang::ASTContext * context;
-	public:
-		explicit TestConsumer(clang::ASTContext * context)
-			: clang::ASTConsumer()
-			, context(context)
-		{}
 
-		virtual ~TestConsumer()
-		{}
-
-		virtual void HandleTagDeclDefinition(clang::TagDecl * tag)
+		void visit_CXXRecordDecl(clang::CXXRecordDecl * d)
 		{
-			clang::CXXRecordDecl * d = llvm::dyn_cast<clang::CXXRecordDecl>(tag);
 			if (!d)
 				return;
 
@@ -141,6 +131,28 @@ class TestConsumer : public clang::ASTConsumer
 			dump_base_classes(d);
 			dump_methods(d);
 			dump_fields(d);
+		}
+	private:
+		clang::ASTContext * context;
+	public:
+		explicit TestConsumer(clang::ASTContext * context)
+			: clang::ASTConsumer()
+			, context(context)
+		{}
+
+		virtual ~TestConsumer()
+		{}
+
+		virtual void HandleTagDeclDefinition(clang::TagDecl * tag)
+		{
+			switch (tag->getDeclKind()) {
+				case clang::Decl::CXXRecord:
+					visit_CXXRecordDecl(llvm::dyn_cast<clang::CXXRecordDecl>(tag));
+					break;
+
+				default:
+					break;
+			}
 		}
 };
 

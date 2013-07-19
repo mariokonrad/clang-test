@@ -1,6 +1,7 @@
 
 namespace sys {
-class A { public: void f(int a, int b) {} void g(float c) {} };
+class A { public: void f(int a, int b) const; void g(float c) {} };
+void A::f(int a, int b) const {}
 }
 
 namespace util {
@@ -26,6 +27,10 @@ class Base : virtual public sys::A, virtual public util::special::B, public D
 		test::E::E1 e1;
 };
 }
+
+struct XX {};
+
+union YY {};
 
 int main()
 {
