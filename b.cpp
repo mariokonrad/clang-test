@@ -2,8 +2,12 @@
 int barfoo();
 
 namespace org {
-void foobar()
+int foobar()
 {
+	int a = 0;
+	int b = 1;
+
+	return a + b;
 }
 }
 
