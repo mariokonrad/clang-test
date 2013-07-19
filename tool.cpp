@@ -294,15 +294,17 @@ class NamespaceFrontendActionFactory : public clang::tooling::FrontendActionFact
 int main(int argc, const char ** argv)
 {
 	clang::tooling::CommonOptionsParser options(argc, argv);
-	clang::tooling::ClangTool tool(options.GetCompilations(), options.GetSourcePathList());
+	clang::tooling::ClangTool tool(options.getCompilations(), options.getSourcePathList());
 
-//	return tool.run(new TestFrontendActionFactory);
+	return tool.run(new TestFrontendActionFactory);
 
+/*
 	NamespaceFrontendActionFactory factory;
 	int rc = tool.run(&factory);
 	for (auto ns : factory.get_namespaces()) {
 		std::cout << ns << std::endl;
 	}
 	return rc;
+*/
 }
 

@@ -4,6 +4,7 @@ extern "C" {
 }
 
 #include <string>
+#include <iostream>
 
 static std::string to_string(CXString str)
 {
@@ -24,12 +25,13 @@ struct Location
 		, column(0)
 		, offset(0)
 	{
-		CXSourceLocation loc = clang_getCursorLocation(cursor);
+		source_location = clang_getCursorLocation(cursor);
 		CXFile file;
-		clang_getSpellingLocation(loc, &file, &line, &column, &offset);
+		clang_getSpellingLocation(source_location, &file, &line, &column, &offset);
 		filename = to_string(clang_getFileName(file));
 	}
 
+	CXSourceLocation source_location;
 	std::string filename;
 	unsigned int line;
 	unsigned int column;
@@ -106,27 +108,19 @@ static CXChildVisitResult count_method_parameters(
 	return CXChildVisit_Continue;
 }
 
-static bool is_system(const std::string & s)
-{
-	return false
-		|| s.find("/usr/include/") == 0
-		|| s.find("/usr/lib/") == 0
-		;
-}
-
 static CXChildVisitResult visitor_recursive(
 		CXCursor cursor,
 		CXCursor parent,
 		CXClientData data)
 {
-	unsigned int * level = static_cast<unsigned int *>(data);
-	dump(stdout, cursor, *level);
-
 	Location loc(cursor);
 
 	// ignore system headers/code
-	if (is_system(loc.filename))
+	if (clang_Location_isInSystemHeader(loc.source_location))
 		return CXChildVisit_Continue;
+
+	unsigned int * level = static_cast<unsigned int *>(data);
+	dump(stdout, cursor, *level);
 
 	std::string s = to_string(clang_getCursorSpelling(cursor));
 	std::string usr = to_string(clang_getCursorUSR(cursor));

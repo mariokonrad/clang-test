@@ -38,8 +38,8 @@ int main(int argc, const char ** argv)
 {
 	CommonOptionsParser OptionsParser(argc, argv);
 	ClangTool tool(
-			OptionsParser.GetCompilations(),
-			OptionsParser.GetSourcePathList());
+			OptionsParser.getCompilations(),
+			OptionsParser.getSourcePathList());
 
 //	return tool.run(newFrontendActionFactory<clang::SyntaxOnlyAction>());
 
