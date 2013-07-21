@@ -116,8 +116,8 @@ static void dump(std::ostream & os, CXCursor cursor, unsigned int level)
 {
 	using namespace std;
 
-	std::string s = to_string(clang_getCursorSpelling(cursor));
-	std::string ks = to_string(clang_getCursorKindSpelling(clang_getCursorKind(cursor)));
+	string s = to_string(clang_getCursorSpelling(cursor));
+	string ks = to_string(clang_getCursorKindSpelling(clang_getCursorKind(cursor)));
 
 	Location loc(cursor);
 	os
@@ -131,6 +131,16 @@ static void dump(std::ostream & os, CXCursor cursor, unsigned int level)
 		<< ks
 		<< " : "
 		<< loc
+		<< endl;
+}
+
+static void dump1(std::ostream & os, CXCursor cursor, unsigned int level)
+{
+	for (unsigned int i = 0; i < level; ++i)
+		os << "    ";
+	os
+		<< to_string(clang_getCursorKindSpelling(clang_getCursorKind(cursor)))
+		<< "  " << to_string(clang_getCursorSpelling(cursor))
 		<< std::endl;
 }
 
@@ -238,12 +248,29 @@ static CXChildVisitResult count_class_nested_records(
 	return CXChildVisit_Continue;
 }
 
+static unsigned int count_depth_of_inheritance_tree(CXCursor cursor)
+{
+	std::vector<CXCursor> bases;
+	unsigned int dit_max = 0;
+
+	clang_visitChildren(cursor, collect_base_classes, &bases);
+
+	for (auto base : bases) {
+		unsigned int t = 1 + count_depth_of_inheritance_tree(base);
+		if (t > dit_max)
+			dit_max = t;
+	}
+
+	return dit_max;
+}
+
 static void visit_ClassDecl(CXCursor cursor, CXCursor parent)
 {
 	std::vector<CXCursor> base_classes;
 	std::string base_classes_str;
 	unsigned int num_methods = 0;
 	unsigned int num_fields = 0;
+	unsigned int dit = 0;
 
 	clang_visitChildren(cursor, collect_base_classes, &base_classes);
 	clang_visitChildren(cursor, count_class_methods, &num_methods);
@@ -252,13 +279,16 @@ static void visit_ClassDecl(CXCursor cursor, CXCursor parent)
 	for (auto base : base_classes)
 		base_classes_str += " " + to_string(clang_getCursorSpelling(base)) + " ";
 
-	std::cerr << "CLASS: "
+	dit = count_depth_of_inheritance_tree(cursor);
+
+	std::cerr << "== CLASS: "
 		<< collect_namespaces_for(parent)
 		<< to_string(clang_getCursorSpelling(cursor))
 		<< " (" << to_string(clang_getCursorUSR(cursor)) << ")"
 		<< " based on (" << base_classes.size() << ") {" << base_classes_str << "}"
 		<< " methods:" << num_methods
 		<< " fields:" << num_fields
+		<< " dit:" << dit
 		<< " at " << Location(cursor)
 		<< std::endl;
 }
@@ -275,9 +305,7 @@ static void visit_MethodDecl(CXCursor cursor, CXCursor parent)
 		compound_range = os.str();
 	}
 
-	// TODO: CXCursor_CXXBaseSpecifier to CXCursor_ClassDecl ??
-
-	std::cerr << "METHOD: "
+	std::cerr << "== METHOD: "
 		<< collect_namespaces_for(parent)
 		<< to_string(clang_getCursorSpelling(cursor))
 		<< " params:" << num_params
@@ -302,7 +330,7 @@ static void visit_Function(CXCursor cursor, CXCursor parent)
 		compound_range = os.str();
 	}
 
-	std::cerr << "FUNCTION: "
+	std::cerr << "== FUNCTION: "
 		<< collect_namespaces_for(parent)
 		<< to_string(clang_getCursorSpelling(cursor))
 		<< " " << num_params
@@ -340,7 +368,8 @@ static CXChildVisitResult visitor_recursive(
 
 	unsigned int * level = static_cast<unsigned int *>(data);
 	// disabled: dump(std::cout, cursor, *level);
-	dump_info(cursor);
+	// disabled: dump_info(cursor);
+	dump1(std::cout, cursor, *level);
 
 	switch (clang_getCursorKind(cursor)) {
 		case CXCursor_ClassDecl:
