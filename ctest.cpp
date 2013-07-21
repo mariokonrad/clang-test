@@ -31,29 +31,50 @@ static std::string namespaces_to_string(const std::vector<std::string> & namespa
 	return os.str();
 }
 
-struct Location
+class Location
 {
-	Location(CXCursor cursor)
-		: filename("")
-		, line(0)
-		, column(0)
-		, offset(0)
-	{
-		source_location = clang_getCursorLocation(cursor);
-		CXFile file;
-		clang_getSpellingLocation(source_location, &file, &line, &column, &offset);
-		filename = to_string(clang_getFileName(file));
-	}
+	private:
+		CXSourceLocation source_location;
+		std::string filename;
+		unsigned int line;
+		unsigned int column;
+		unsigned int offset;
 
-	bool is_in_system_header(void) const;
+		void init_filename(CXSourceLocation location)
+		{
+			CXFile file;
+			clang_getSpellingLocation(source_location, &file, &line, &column, &offset);
+			filename = to_string(clang_getFileName(file));
+		}
+	public:
+		Location(CXCursor cursor)
+			: filename("")
+			, line(0)
+			, column(0)
+			, offset(0)
+		{
+			source_location = clang_getCursorLocation(cursor);
+			init_filename(source_location);
+		}
 
-	friend std::ostream & operator<<(std::ostream &, const Location &);
+		Location(CXSourceLocation location)
+			: source_location(location)
+			, filename("")
+			, line(0)
+			, column(0)
+			, offset(0)
+		{
+			init_filename(source_location);
+		}
 
-	CXSourceLocation source_location;
-	std::string filename;
-	unsigned int line;
-	unsigned int column;
-	unsigned int offset;
+		bool is_in_system_header(void) const;
+
+		unsigned int get_line() const
+		{
+			return line;
+		}
+
+		friend std::ostream & operator<<(std::ostream &, const Location &);
 };
 
 bool Location::is_in_system_header(void) const
@@ -71,6 +92,25 @@ std::ostream & operator<<(std::ostream & os, const Location & loc)
 		<< loc.column
 		;
 }
+
+class Range
+{
+	private:
+		CXSourceRange range;
+		Location start;
+		Location end;
+	public:
+		Range(CXCursor cursor)
+			: range(clang_getCursorExtent(cursor))
+			, start(clang_getRangeStart(range))
+			, end(clang_getRangeEnd(range))
+		{}
+
+		unsigned int get_num_lines() const
+		{
+			return end.get_line() - start.get_line() - 1;
+		}
+};
 
 static void dump(std::ostream & os, CXCursor cursor, unsigned int level)
 {
@@ -94,16 +134,6 @@ static void dump(std::ostream & os, CXCursor cursor, unsigned int level)
 		<< std::endl;
 }
 
-static CXChildVisitResult visitor_autorecursion(
-		CXCursor cursor,
-		CXCursor parent,
-		CXClientData data)
-{
-	unsigned int level = *static_cast<unsigned int *>(data);
-	dump(std::cout, cursor, level);
-	return CXChildVisit_Recurse;
-}
-
 static std::string collect_namespaces_for(CXCursor cursor)
 {
 	std::vector<std::string> namespaces;
@@ -122,6 +152,30 @@ static std::string collect_namespaces_for(CXCursor cursor)
 
 	std::reverse(namespaces.begin(), namespaces.end());
 	return namespaces_to_string(namespaces);
+}
+
+static CXChildVisitResult find_compound_statement(
+		CXCursor cursor,
+		CXCursor parent,
+		CXClientData data)
+{
+	if (clang_getCursorKind(cursor) == CXCursor_CompoundStmt) {
+		CXCursor * compound = static_cast<CXCursor *>(data);
+		*compound = cursor;
+		return CXChildVisit_Break;
+	}
+	return CXChildVisit_Continue;
+}
+
+static int get_lines_of_compound_statement_for(CXCursor cursor)
+{
+	CXCursor compound = clang_getNullCursor();
+
+	clang_visitChildren(cursor, find_compound_statement, &compound);
+	if (clang_equalCursors(compound, clang_getNullCursor()))
+		return -1;
+
+	return Range(compound).get_num_lines();
 }
 
 static CXChildVisitResult collect_base_classes(
@@ -145,19 +199,6 @@ static CXChildVisitResult count_base_classes(
 	unsigned int * count = static_cast<unsigned int *>(data);
 
 	if (clang_getCursorKind(cursor) == CXCursor_CXXBaseSpecifier)
-		*count += 1;
-
-	return CXChildVisit_Continue;
-}
-
-static CXChildVisitResult count_method_parameters(
-		CXCursor cursor,
-		CXCursor parent,
-		CXClientData data)
-{
-	unsigned int * count = static_cast<unsigned int *>(data);
-
-	if (clang_getCursorKind(cursor) == CXCursor_ParmDecl)
 		*count += 1;
 
 	return CXChildVisit_Continue;
@@ -235,9 +276,15 @@ static void visit_ClassDecl(CXCursor cursor, CXCursor parent)
 
 static void visit_MethodDecl(CXCursor cursor, CXCursor parent)
 {
-	unsigned int num_params = 0;
+	int num_params = clang_Cursor_getNumArguments(cursor);
 
-	clang_visitChildren(cursor, count_method_parameters, &num_params);
+	int lines = get_lines_of_compound_statement_for(cursor);
+	std::string compound_range;
+	if (lines >= 0) {
+		std::ostringstream os;
+		os << " for " << lines << " lines";
+		compound_range = os.str();
+	}
 
 	std::cerr << "METHOD: "
 		<< collect_namespaces_for(parent)
@@ -245,6 +292,7 @@ static void visit_MethodDecl(CXCursor cursor, CXCursor parent)
 		<< " params:" << num_params
 		<< " (" << to_string(clang_getCursorUSR(cursor)) << ")"
 		<< " at " << Location(cursor)
+		<< compound_range
 		<< std::endl;
 }
 
@@ -253,9 +301,15 @@ static void visit_Function(CXCursor cursor, CXCursor parent)
 	if (!clang_isCursorDefinition(cursor))
 		return;
 
-	unsigned int num_params = 0;
+	int num_params = clang_Cursor_getNumArguments(cursor);
 
-	clang_visitChildren(cursor, count_method_parameters, &num_params);
+	int lines = get_lines_of_compound_statement_for(cursor);
+	std::string compound_range;
+	if (lines >= 0) {
+		std::ostringstream os;
+		os << " for " << lines << " lines";
+		compound_range = os.str();
+	}
 
 	std::cerr << "FUNCTION: "
 		<< collect_namespaces_for(parent)
@@ -263,6 +317,7 @@ static void visit_Function(CXCursor cursor, CXCursor parent)
 		<< " " << num_params
 		<< " (" << to_string(clang_getCursorUSR(cursor)) << ")"
 		<< " at " << Location(cursor)
+		<< compound_range
 		<< std::endl;
 }
 
@@ -272,6 +327,7 @@ static void dump_info(CXCursor cursor)
 
 	std::cerr
 		<< "#### {"
+		<< " KIND:" << to_string(clang_getCursorKindSpelling(clang_getCursorKind(cursor)))
 		<< " DECL:" << clang_isDeclaration(kind)
 		<< " DEF:" << clang_isCursorDefinition(cursor)
 		<< " REF:" << clang_isReference(kind)
@@ -293,6 +349,7 @@ static CXChildVisitResult visitor_recursive(
 
 	unsigned int * level = static_cast<unsigned int *>(data);
 	// disabled: dump(std::cout, cursor, *level);
+	dump_info(cursor);
 
 	switch (clang_getCursorKind(cursor)) {
 		case CXCursor_ClassDecl:
