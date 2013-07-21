@@ -183,23 +183,10 @@ static CXChildVisitResult collect_base_classes(
 		CXCursor parent,
 		CXClientData data)
 {
-	std::string * s = static_cast<std::string *>(data);
+	std::vector<CXCursor> * base_classes = static_cast<std::vector<CXCursor> *>(data);
 
 	if (clang_getCursorKind(cursor) == CXCursor_CXXBaseSpecifier)
-		*s += " " + to_string(clang_getCursorSpelling(cursor)) + " ";
-
-	return CXChildVisit_Continue;
-}
-
-static CXChildVisitResult count_base_classes(
-		CXCursor cursor,
-		CXCursor parent,
-		CXClientData data)
-{
-	unsigned int * count = static_cast<unsigned int *>(data);
-
-	if (clang_getCursorKind(cursor) == CXCursor_CXXBaseSpecifier)
-		*count += 1;
+		base_classes->push_back(cursor);
 
 	return CXChildVisit_Continue;
 }
@@ -253,21 +240,23 @@ static CXChildVisitResult count_class_nested_records(
 
 static void visit_ClassDecl(CXCursor cursor, CXCursor parent)
 {
-	std::string base_classes;
-	unsigned int num_base_classes = 0;
+	std::vector<CXCursor> base_classes;
+	std::string base_classes_str;
 	unsigned int num_methods = 0;
 	unsigned int num_fields = 0;
 
 	clang_visitChildren(cursor, collect_base_classes, &base_classes);
-	clang_visitChildren(cursor, count_base_classes, &num_base_classes);
 	clang_visitChildren(cursor, count_class_methods, &num_methods);
 	clang_visitChildren(cursor, count_class_fields, &num_fields);
+
+	for (auto base : base_classes)
+		base_classes_str += " " + to_string(clang_getCursorSpelling(base)) + " ";
 
 	std::cerr << "CLASS: "
 		<< collect_namespaces_for(parent)
 		<< to_string(clang_getCursorSpelling(cursor))
 		<< " (" << to_string(clang_getCursorUSR(cursor)) << ")"
-		<< " based on (" << num_base_classes << ") {" << base_classes << "}"
+		<< " based on (" << base_classes.size() << ") {" << base_classes_str << "}"
 		<< " methods:" << num_methods
 		<< " fields:" << num_fields
 		<< " at " << Location(cursor)
