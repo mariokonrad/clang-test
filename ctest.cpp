@@ -186,7 +186,7 @@ static CXChildVisitResult collect_base_classes(
 	std::vector<CXCursor> * base_classes = static_cast<std::vector<CXCursor> *>(data);
 
 	if (clang_getCursorKind(cursor) == CXCursor_CXXBaseSpecifier)
-		base_classes->push_back(cursor);
+		base_classes->push_back(clang_getCursorDefinition(cursor));
 
 	return CXChildVisit_Continue;
 }
