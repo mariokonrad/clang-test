@@ -275,6 +275,8 @@ static void visit_MethodDecl(CXCursor cursor, CXCursor parent)
 		compound_range = os.str();
 	}
 
+	// TODO: CXCursor_CXXBaseSpecifier to CXCursor_ClassDecl ??
+
 	std::cerr << "METHOD: "
 		<< collect_namespaces_for(parent)
 		<< to_string(clang_getCursorSpelling(cursor))
