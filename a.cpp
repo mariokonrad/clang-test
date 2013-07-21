@@ -43,7 +43,7 @@ class AA;
 
 class AA {};
 
-int main()
+int main(int, char **)
 {
 	return 0;
 }
