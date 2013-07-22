@@ -1,21 +1,35 @@
 #include "Metric_NumberOfMethods.hpp"
 #include "Clang.hpp"
 #include "Location.hpp"
+#include "VisitorFactory.hpp"
 #include <iostream>
 #include <iomanip>
 #include <algorithm>
 #include <vector>
 
+const VisitorDescriptor Metric_NumberOfMethods::DESCRIPTOR =
+{
+	"NumMeth",
+	"Number of Methods",
+	""
+};
+
+void Metric_NumberOfMethods::register_in(VisitorFactory & factory)
+{
+	factory.add(DESCRIPTOR, []()
+	{
+		return new Metric_NumberOfMethods;
+	});
+}
+
 const std::string & Metric_NumberOfMethods::get_name() const
 {
-	static const std::string NAME = "Number of Methods";
-	return NAME;
+	return DESCRIPTOR.name;
 }
 
 const std::string & Metric_NumberOfMethods::get_id() const
 {
-	static const std::string ID = "NumMeth";
-	return ID;
+	return DESCRIPTOR.id;
 }
 
 CXChildVisitResult Metric_NumberOfMethods::count_class_methods(

@@ -63,6 +63,7 @@ metrics : \
 		Location.o \
 		Range.o \
 		Visitor.o \
+		VisitorFactory.o \
 		Metric_DIT.o \
 		Metric_NumberOfMethods.o \
 		Metric_NumberOfFields.o \

@@ -1,21 +1,35 @@
 #include "Metric_NumberOfFields.hpp"
 #include "Clang.hpp"
 #include "Location.hpp"
+#include "VisitorFactory.hpp"
 #include <iostream>
 #include <iomanip>
 #include <algorithm>
 #include <vector>
 
+const VisitorDescriptor Metric_NumberOfFields::DESCRIPTOR =
+{
+	"NumFields",
+	"Number of Fields",
+	""
+};
+
+void Metric_NumberOfFields::register_in(VisitorFactory & factory)
+{
+	factory.add(DESCRIPTOR, []()
+	{
+		return new Metric_NumberOfFields;
+	});
+}
+
 const std::string & Metric_NumberOfFields::get_name() const
 {
-	static const std::string NAME = "Number of Fields";
-	return NAME;
+	return DESCRIPTOR.name;
 }
 
 const std::string & Metric_NumberOfFields::get_id() const
 {
-	static const std::string ID = "NumFields";
-	return ID;
+	return DESCRIPTOR.id;
 }
 
 CXChildVisitResult Metric_NumberOfFields::count_class_fields(

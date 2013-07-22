@@ -3,6 +3,7 @@
 #include "Metric_FunctionArguments.hpp"
 #include "Metric_NumberOfMethods.hpp"
 #include "Metric_NumberOfFields.hpp"
+#include "VisitorFactory.hpp"
 #include "string_split.hpp"
 #include <iostream>
 #include <iomanip>
@@ -22,7 +23,7 @@ struct Options
 static int parse_options(
 		Options & options,
 		int argc, char ** argv,
-		const std::vector<Visitor *> & available_visitors)
+		const VisitorFactory & factory)
 {
 	using namespace boost::program_options;
 
@@ -54,7 +55,7 @@ static int parse_options(
 	options_description options_processing("Processing Options");
 	options_processing.add_options()
 		("process",
-			value<std::string>(&options.value_visitors)->composing(),
+			value<std::string>(&options.value_visitors)->default_value("all"),
 			"comma separated selection of visitors, use 'all' to enable all")
 		;
 
@@ -81,13 +82,13 @@ static int parse_options(
 			cout << "Parses metrics from specified files." << endl << endl;
 			cout << cli_options << endl;
 			cout << "Available Visitors:" << endl;
-			for (auto v : available_visitors)
+			for (auto v : factory.get_visitor_desc())
 				cout
 					<< "  "
 					<< left << setw(15)
-					<< v->get_id()
+					<< v.id
 					<< " : "
-					<< v->get_name()
+					<< v.name
 					<< endl;
 			cout << endl;
 			return EXIT_FAILURE;
@@ -142,22 +143,52 @@ static CXTranslationUnit process_file(
 	return tu;
 }
 
+static int setup_visitors(
+		std::vector<Visitor *> & visitors,
+		const VisitorFactory & factory,
+		const Options & options)
+{
+	if (options.value_visitors == "all") {
+		visitors.reserve(visitors.size() + factory.size());
+		for (auto i : factory.get_visitor_desc())
+			visitors.push_back(factory.create(i.id));
+		return EXIT_SUCCESS;
+	}
+
+	// instantiate individual visitors
+	std::vector<std::string> visitor_ids;
+	utils::split(visitor_ids, options.value_visitors, ",");
+
+	// check for existance
+	for (auto id : visitor_ids) {
+		if (!factory.exists(id)) {
+			std::cerr << "error: unknown visitor '" << id << "'. abort." << std::endl;
+			return EXIT_FAILURE;
+		}
+	}
+
+	// instantiate visitors
+	visitors.reserve(visitors.size() + visitor_ids.size());
+	for (auto id : visitor_ids)
+		visitors.push_back(factory.create(id));
+
+	return EXIT_SUCCESS;
+}
+
 int main(int argc, char ** argv)
 {
-	// available visitors: TODO: register factories
+	// available visitors
 
-	std::vector<Visitor *> available_visitors =
-	{
-		new Metric_DIT,
-		new Metric_NumberOfMethods,
-		new Metric_NumberOfFields,
-		new Metric_FunctionArguments,
-	};
+	VisitorFactory factory;
+	Metric_DIT::register_in(factory);
+	Metric_FunctionArguments::register_in(factory);
+	Metric_NumberOfMethods::register_in(factory);
+	Metric_NumberOfFields::register_in(factory);
 
 	// command line options
 
 	Options options;
-	if (parse_options(options, argc, argv, available_visitors) != EXIT_SUCCESS)
+	if (parse_options(options, argc, argv, factory) != EXIT_SUCCESS)
 		return EXIT_FAILURE;
 
 	std::vector<std::string> arguments =
@@ -172,23 +203,8 @@ int main(int argc, char ** argv)
 	// visitor selection
 
 	std::vector<Visitor *> visitors;
-	if (options.value_visitors == "all") {
-		visitors = available_visitors;
-	} else {
-		std::vector<std::string> visitor_ids;
-		utils::split(visitor_ids, options.value_visitors, ",");
-		for (auto id : visitor_ids) {
-			auto v = find_if(
-				begin(available_visitors),
-				end(available_visitors),
-				[id](const Visitor * visitor)
-			{
-				return id == visitor->get_id();
-			});
-			if (v != end(available_visitors))
-				visitors.push_back(*v);
-		}
-	}
+	if (setup_visitors(visitors, factory, options) != EXIT_SUCCESS)
+		return EXIT_FAILURE;
 
 	// process files
 

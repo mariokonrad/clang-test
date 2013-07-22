@@ -2,20 +2,23 @@
 #define __METRIC_FUNCTIONARGUMENTS__HPP__
 
 #include "Visitor.hpp"
+#include "VisitorDescriptor.hpp"
 #include <map>
+
+class VisitorFactory;
 
 class Metric_FunctionArguments : public Visitor
 {
 	private:
-		struct Info
+		struct Item
 		{
 			CXCursor cursor;
 			int count;
 		};
 
-		typedef std::map<std::string, Info> Data;
+		std::map<std::string, Item> data;
 
-		Data data;
+		static const VisitorDescriptor DESCRIPTOR;
 
 	public:
 		virtual const std::string & get_name() const;
@@ -26,6 +29,8 @@ class Metric_FunctionArguments : public Visitor
 				CXCursor parent);
 
 		virtual void report(std::ostream &) const;
+
+		static void register_in(VisitorFactory &);
 };
 
 #endif

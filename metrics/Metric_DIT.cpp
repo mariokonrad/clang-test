@@ -1,21 +1,35 @@
 #include "Metric_DIT.hpp"
 #include "Clang.hpp"
 #include "Location.hpp"
+#include "VisitorFactory.hpp"
 #include <iostream>
 #include <iomanip>
 #include <algorithm>
 #include <vector>
 
+const VisitorDescriptor Metric_DIT::DESCRIPTOR =
+{
+	"DIT",
+	"Depth of Inheritance Tree",
+	""
+};
+
+void Metric_DIT::register_in(VisitorFactory & factory)
+{
+	factory.add(DESCRIPTOR, []()
+	{
+		return new Metric_DIT;
+	});
+}
+
 const std::string & Metric_DIT::get_name() const
 {
-	static const std::string NAME = "Depth of Inheritance Tree";
-	return NAME;
+	return DESCRIPTOR.name;
 }
 
 const std::string & Metric_DIT::get_id() const
 {
-	static const std::string ID = "DIT";
-	return ID;
+	return DESCRIPTOR.id;
 }
 
 CXChildVisitResult Metric_DIT::collect_base_classes(

@@ -2,20 +2,23 @@
 #define __METRIC_DIT__HPP__
 
 #include "Visitor.hpp"
+#include "VisitorDescriptor.hpp"
 #include <map>
+
+class VisitorFactory;
 
 class Metric_DIT : public Visitor
 {
 	private:
-		struct Info
+		struct Item
 		{
 			CXCursor cursor;
 			unsigned int count;
 		};
 
-		typedef std::map<std::string, Info> Data;
+		std::map<std::string, Item> data;
 
-		Data data;
+		static const VisitorDescriptor DESCRIPTOR;
 
 	private:
 		unsigned int count_depth_of_inheritance_tree(CXCursor cursor) const;
@@ -34,6 +37,8 @@ class Metric_DIT : public Visitor
 				CXCursor parent);
 
 		virtual void report(std::ostream &) const;
+
+		static void register_in(VisitorFactory &);
 };
 
 #endif

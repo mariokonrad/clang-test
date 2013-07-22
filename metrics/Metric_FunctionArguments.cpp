@@ -1,18 +1,32 @@
 #include "Metric_FunctionArguments.hpp"
 #include "Clang.hpp"
 #include "Location.hpp"
+#include "VisitorFactory.hpp"
 #include <iomanip>
+
+const VisitorDescriptor Metric_FunctionArguments::DESCRIPTOR =
+{
+	"NumFuncArg",
+	"Number of Funtion/Method Arguments",
+	""
+};
+
+void Metric_FunctionArguments::register_in(VisitorFactory & factory)
+{
+	factory.add(DESCRIPTOR, []()
+	{
+		return new Metric_FunctionArguments;
+	});
+}
 
 const std::string & Metric_FunctionArguments::get_name() const
 {
-	static const std::string NAME = "Number of Funtion/Method Arguments";
-	return NAME;
+	return DESCRIPTOR.name;
 }
 
 const std::string & Metric_FunctionArguments::get_id() const
 {
-	static const std::string ID = "NumFuncArg";
-	return ID;
+	return DESCRIPTOR.id;
 }
 
 CXChildVisitResult Metric_FunctionArguments::visit(
