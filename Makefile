@@ -50,8 +50,7 @@ LIBS=\
 	$(CLANGLIBS) \
 	$(shell $(CONFIG) --libs core cppbackend cppbackendinfo bitreader mcparser)
 
-all : metrics
-#all : metrics ctest tool matcher
+all : ctest tool matcher
 
 metrics : metrics.o
 	$(CXX) -o $@ $^ $(LIBS) $(LDFLAGS)
@@ -67,7 +66,7 @@ tool : tool.o
 
 clean :
 	rm -f *.o
-	rm -f ctest tool matcher metrics
+	rm -f ctest tool matcher
 
 %.o : %.cpp
 	$(CXX) $(CXXFLAGS) -o $@ -c $<
