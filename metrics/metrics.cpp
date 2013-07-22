@@ -20,12 +20,13 @@ struct Options
 	std::vector<std::string> value_define;
 	std::vector<std::string> value_inputfiles;
 	std::string value_visitors;
+	std::string value_report_type;
 };
 
 static int parse_options(
 		Options & options,
 		int argc, char ** argv,
-		const VisitorFactory & factory)
+		const VisitorFactory & visitor_factory)
 {
 	using namespace boost::program_options;
 
@@ -54,6 +55,13 @@ static int parse_options(
 			"file to process")
 		;
 
+	options_description options_output("Output Options");
+	options_output.add_options()
+		("report",
+			value<std::string>(&options.value_report_type)->default_value("plain"),
+			"report type to be written to stdout, available: plain")
+		;
+
 	options_description options_processing("Processing Options");
 	options_processing.add_options()
 		("process",
@@ -68,6 +76,7 @@ static int parse_options(
 	cli_options.add(options_generic);
 	cli_options.add(options_preproc);
 	cli_options.add(options_input);
+	cli_options.add(options_output);
 	cli_options.add(options_processing);
 
 	variables_map vm;
@@ -85,14 +94,8 @@ static int parse_options(
 			cout << "Parses metrics from specified files." << endl << endl;
 			cout << cli_options << endl;
 			cout << "Available Visitors:" << endl;
-			for (auto v : factory.get_visitor_desc())
-				cout
-					<< "  "
-					<< left << setw(15)
-					<< v.id
-					<< " : "
-					<< v.name
-					<< endl;
+			for (auto v : visitor_factory.get_visitor_desc())
+				cout << "  " << left << setw(15) << v.id << " : " << v.name << endl;
 			cout << endl;
 			return EXIT_FAILURE;
 		}
@@ -184,18 +187,18 @@ int main(int argc, char ** argv)
 {
 	// available visitors
 
-	VisitorFactory factory;
-	Metric_DIT::register_in(factory);
-	Metric_FunctionArguments::register_in(factory);
-	Metric_NumberOfMethods::register_in(factory);
-	Metric_NumberOfFields::register_in(factory);
-	Metric_NestedDepth::register_in(factory);
-	ASTDump::register_in(factory);
+	VisitorFactory visitor_factory;
+	Metric_DIT::register_in(visitor_factory);
+	Metric_FunctionArguments::register_in(visitor_factory);
+	Metric_NumberOfMethods::register_in(visitor_factory);
+	Metric_NumberOfFields::register_in(visitor_factory);
+	Metric_NestedDepth::register_in(visitor_factory);
+	ASTDump::register_in(visitor_factory);
 
 	// command line options
 
 	Options options;
-	if (parse_options(options, argc, argv, factory) != EXIT_SUCCESS)
+	if (parse_options(options, argc, argv, visitor_factory) != EXIT_SUCCESS)
 		return EXIT_FAILURE;
 
 	if (options.value_inputfiles.empty()) {
@@ -215,7 +218,7 @@ int main(int argc, char ** argv)
 	// visitor selection
 
 	std::vector<Visitor *> visitors;
-	if (setup_visitors(visitors, factory, options) != EXIT_SUCCESS)
+	if (setup_visitors(visitors, visitor_factory, options) != EXIT_SUCCESS)
 		return EXIT_FAILURE;
 
 	// process files
@@ -230,8 +233,11 @@ int main(int argc, char ** argv)
 		translationunits.push_back(tu);
 	}
 
-	for (auto visitor : visitors)
-		visitor->report(std::cout);
+	// TODO: reports instantiation to be replaced by factory
+	if (options.value_report_type == "plain") {
+		for (auto visitor : visitors)
+			visitor->report(std::cout);
+	}
 
 	for (auto tu : translationunits)
 		Clang::disposeTranslationUnit(tu);
