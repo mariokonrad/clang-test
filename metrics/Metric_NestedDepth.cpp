@@ -13,6 +13,8 @@ const VisitorDescriptor Metric_NestedDepth::DESCRIPTOR =
 	"Nested Depth of Functions and Methods",
 	"",
 	true,
+	false,
+	true,
 };
 
 void Metric_NestedDepth::register_in(VisitorFactory & factory)

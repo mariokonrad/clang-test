@@ -13,6 +13,8 @@ const VisitorDescriptor Metric_NumberOfMethods::DESCRIPTOR =
 	"Number of Methods",
 	"",
 	true,
+	true,
+	false,
 };
 
 void Metric_NumberOfMethods::register_in(VisitorFactory & factory)

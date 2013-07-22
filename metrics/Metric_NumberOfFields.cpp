@@ -13,6 +13,8 @@ const VisitorDescriptor Metric_NumberOfFields::DESCRIPTOR =
 	"Number of Fields",
 	"",
 	true,
+	true,
+	false,
 };
 
 void Metric_NumberOfFields::register_in(VisitorFactory & factory)

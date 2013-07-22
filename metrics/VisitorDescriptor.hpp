@@ -10,6 +10,8 @@ class VisitorDescriptor
 		std::string name;
 		std::string description;
 		bool included_in_all;
+		bool reports_records; // provides reports about records (structs, classes)
+		bool reports_functions; // provides reports about function (methods)
 };
 
 #endif
