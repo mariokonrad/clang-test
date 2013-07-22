@@ -53,7 +53,7 @@ CXChildVisitResult Metric_NumberOfMethods::visit(
 		CXCursor cursor,
 		CXCursor parent)
 {
-	if (Location(cursor).is_in_system_header())
+	if (ignore(cursor))
 		return CXChildVisit_Continue;
 	if (Clang::getCursorKind(cursor) != CXCursor_ClassDecl)
 		return CXChildVisit_Recurse;

@@ -21,6 +21,7 @@ class Visitor
 
 	protected:
 		std::string namespace_for(CXCursor cursor) const;
+		bool ignore(CXCursor cursor) const;
 
 	public:
 		virtual ~Visitor();

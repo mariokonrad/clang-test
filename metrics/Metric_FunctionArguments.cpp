@@ -37,8 +37,9 @@ CXChildVisitResult Metric_FunctionArguments::visit(
 		CXCursor cursor,
 		CXCursor parent)
 {
-	if (Location(cursor).is_in_system_header())
+	if (ignore(cursor))
 		return CXChildVisit_Continue;
+
 	switch (Clang::getCursorKind(cursor)) {
 		case CXCursor_CXXMethod:
 		case CXCursor_FunctionDecl:

@@ -1,6 +1,7 @@
 #include "Visitor.hpp"
 #include "string_join.hpp"
 #include "Clang.hpp"
+#include "Location.hpp"
 #include <vector>
 #include <algorithm>
 
@@ -41,5 +42,10 @@ std::string Visitor::namespace_for(CXCursor cursor) const
 
 	std::reverse(namespaces.begin(), namespaces.end());
 	return utils::join(namespaces.begin(), namespaces.end(), "::", "", "") + "::";
+}
+
+bool Visitor::ignore(CXCursor cursor) const
+{
+	return Location(cursor).is_in_system_header();
 }
 

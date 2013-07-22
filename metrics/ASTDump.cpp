@@ -43,7 +43,7 @@ CXChildVisitResult ASTDump::visit(
 {
 	using namespace std;
 
-	if (Location(cursor).is_in_system_header())
+	if (ignore(cursor))
 		return CXChildVisit_Continue;
 
 	cout << setw(3) << level << ": ";
