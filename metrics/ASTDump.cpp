@@ -41,15 +41,19 @@ CXChildVisitResult ASTDump::visit(
 		CXCursor cursor,
 		CXCursor parent)
 {
+	using namespace std;
+
 	if (Location(cursor).is_in_system_header())
 		return CXChildVisit_Continue;
 
+	cout << setw(3) << level << ": ";
 	for (unsigned int i = 0; i < level; ++i)
-		std::cout << "    ";
-	std::cout
+		cout << "    ";
+	cout
 		<< Clang::getCursorKindSpelling(cursor)
 		<< "  " << Clang::getCursorSpelling(cursor)
-		<< std::endl;
+		<< "  " << Location(cursor)
+		<< endl;
 
 	++level;
 	clang_visitChildren(cursor, Visitor::visitor_recursive, this);

@@ -20,6 +20,16 @@ class Metric_NestedDepth : public Visitor
 
 		static const VisitorDescriptor DESCRIPTOR;
 
+		unsigned int depth;
+		unsigned int depth_max;
+
+	private:
+
+		static CXChildVisitResult compute_nested_depth(
+				CXCursor cursor,
+				CXCursor parent,
+				CXClientData data);
+
 	public:
 		virtual const std::string & get_name() const;
 		virtual const std::string & get_id() const;

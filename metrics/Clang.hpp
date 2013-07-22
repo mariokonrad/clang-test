@@ -35,6 +35,7 @@ class Clang
 		static std::string getCursorUSR(CXCursor cursor);
 		static CXCursor getCursorLexicalParent(CXCursor cursor);
 		static CXSourceLocation getCursorLocation(CXCursor cursor);
+		static bool isCursorDefinition(CXCursor cursor);
 
 		static int getNumArguments(CXCursor cursor);
 

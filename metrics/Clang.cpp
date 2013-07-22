@@ -102,3 +102,8 @@ std::string Clang::getFileName(CXFile file)
 	return to_string(clang_getFileName(file));
 }
 
+bool Clang::isCursorDefinition(CXCursor cursor)
+{
+	return clang_isCursorDefinition(cursor);
+}
+
