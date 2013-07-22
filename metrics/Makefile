@@ -51,23 +51,20 @@ LIBS=\
 	$(shell $(CONFIG) --libs core cppbackend cppbackendinfo bitreader mcparser)
 
 all : metrics
-#all : metrics ctest tool matcher
 
-metrics : metrics.o
-	$(CXX) -o $@ $^ $(LIBS) $(LDFLAGS)
-
-matcher : matcher.o
-	$(CXX) -o $@ $^ $(LIBS) $(LDFLAGS)
-
-ctest : ctest.o
-	$(CXX) -o $@ $^ $(LIBS) $(LDFLAGS)
-
-tool : tool.o
+metrics : \
+		Clang.o \
+		Location.o \
+		Range.o \
+		Visitor.o \
+		Metric_DIT.o \
+		Metric_FunctionArguments.o \
+		metrics.o
 	$(CXX) -o $@ $^ $(LIBS) $(LDFLAGS)
 
 clean :
 	rm -f *.o
-	rm -f ctest tool matcher metrics
+	rm -f metrics
 
 %.o : %.cpp
 	$(CXX) $(CXXFLAGS) -o $@ -c $<
