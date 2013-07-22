@@ -3,6 +3,7 @@
 #include "Location.hpp"
 #include "VisitorFactory.hpp"
 #include <iomanip>
+#include <sstream>
 
 const VisitorDescriptor Metric_FunctionArguments::DESCRIPTOR =
 {
@@ -51,11 +52,10 @@ CXChildVisitResult Metric_FunctionArguments::visit(
 	if (data.find(usr) != data.end())
 		return CXChildVisit_Recurse;
 
-	data[usr] =
-	{
-		cursor,
-		Clang::getNumArguments(cursor)
-	};
+	std::ostringstream os;
+	os << Clang::getNumArguments(cursor);
+
+	data[usr] = { cursor, os.str() };
 
 	return CXChildVisit_Recurse;
 }
@@ -69,11 +69,24 @@ void Metric_FunctionArguments::report(std::ostream & os) const
 	for (auto i : data) {
 		os
 			<< setw(3)
-			<< i.second.count
+			<< i.second.result
 			<< " "
 			<< namespace_for(i.second.cursor) << Clang::getCursorSpelling(i.second.cursor)
 			<< " (" << Location(i.second.cursor) << ")"
 			<< endl;
+	}
+}
+
+void Metric_FunctionArguments::collect(ResultContainer & container) const
+{
+	for (auto i : data) {
+		container.insert(ResultContainer::value_type(
+			i.first,
+			{
+				i.second.cursor,
+				get_id(),
+				i.second.result,
+			}));
 	}
 }
 

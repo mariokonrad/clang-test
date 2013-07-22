@@ -3,6 +3,7 @@
 #include "Location.hpp"
 #include "VisitorFactory.hpp"
 #include <iostream>
+#include <sstream>
 #include <iomanip>
 #include <algorithm>
 #include <vector>
@@ -64,11 +65,10 @@ CXChildVisitResult Metric_NumberOfMethods::visit(
 	unsigned int count = 0;
 	clang_visitChildren(cursor, count_class_methods, &count);
 
-	data[usr] =
-	{
-		cursor,
-		count
-	};
+	std::ostringstream os;
+	os << count;
+
+	data[usr] = { cursor, os.str() };
 
 	return CXChildVisit_Recurse;
 }
@@ -82,11 +82,24 @@ void Metric_NumberOfMethods::report(std::ostream & os) const
 	for (auto i : data) {
 		os
 			<< setw(3)
-			<< i.second.count
+			<< i.second.result
 			<< " "
 			<< namespace_for(i.second.cursor) << Clang::getCursorSpelling(i.second.cursor)
 			<< " (" << Location(i.second.cursor) << ")"
 			<< endl;
+	}
+}
+
+void Metric_NumberOfMethods::collect(ResultContainer & container) const
+{
+	for (auto i : data) {
+		container.insert(ResultContainer::value_type(
+			i.first,
+			{
+				i.second.cursor,
+				get_id(),
+				i.second.result,
+			}));
 	}
 }
 

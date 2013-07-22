@@ -13,7 +13,7 @@ class Metric_NestedDepth : public Visitor
 		struct Item
 		{
 			CXCursor cursor;
-			unsigned int count;
+			std::string result;
 		};
 
 		std::map<std::string, Item> data;
@@ -39,6 +39,7 @@ class Metric_NestedDepth : public Visitor
 				CXCursor parent);
 
 		virtual void report(std::ostream &) const;
+		virtual void collect(ResultContainer &) const;
 
 		static void register_in(VisitorFactory &);
 };

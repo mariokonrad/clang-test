@@ -3,6 +3,7 @@
 #include "Location.hpp"
 #include "VisitorFactory.hpp"
 #include <iostream>
+#include <sstream>
 #include <iomanip>
 #include <algorithm>
 #include <vector>
@@ -57,15 +58,16 @@ CXChildVisitResult Metric_NestedDepth::visit(
 	depth_max = 1;
 	clang_visitChildren(cursor, compute_nested_depth, this);
 
+	// TODO: cursor should point where? delcaration or definition?
+
 	std::string usr = Clang::getCursorUSR(cursor);
 	if (data.find(usr) != data.end())
 		return CXChildVisit_Continue;
 
-	data[usr] =
-	{
-		cursor,
-		depth_max
-	};
+	std::ostringstream os;
+	os << depth_max;
+
+	data[usr] = { cursor, os.str() };
 
 	return CXChildVisit_Continue;
 }
@@ -109,11 +111,24 @@ void Metric_NestedDepth::report(std::ostream & os) const
 	for (auto i : data) {
 		os
 			<< setw(3)
-			<< i.second.count
+			<< i.second.result
 			<< " "
 			<< namespace_for(i.second.cursor) << Clang::getCursorSpelling(i.second.cursor)
 			<< " (" << Location(i.second.cursor) << ")"
 			<< endl;
+	}
+}
+
+void Metric_NestedDepth::collect(ResultContainer & container) const
+{
+	for (auto i : data) {
+		container.insert(ResultContainer::value_type(
+			i.first,
+			{
+				i.second.cursor,
+				get_id(),
+				i.second.result,
+			}));
 	}
 }
 

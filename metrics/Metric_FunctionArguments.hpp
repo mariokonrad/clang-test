@@ -13,7 +13,7 @@ class Metric_FunctionArguments : public Visitor
 		struct Item
 		{
 			CXCursor cursor;
-			int count;
+			std::string result;
 		};
 
 		std::map<std::string, Item> data;
@@ -29,6 +29,7 @@ class Metric_FunctionArguments : public Visitor
 				CXCursor parent);
 
 		virtual void report(std::ostream &) const;
+		virtual void collect(ResultContainer &) const;
 
 		static void register_in(VisitorFactory &);
 };

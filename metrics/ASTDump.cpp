@@ -64,3 +64,6 @@ CXChildVisitResult ASTDump::visit(
 void ASTDump::report(std::ostream & os) const
 {}
 
+void ASTDump::collect(ResultContainer &) const
+{}
+

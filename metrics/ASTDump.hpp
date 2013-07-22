@@ -24,6 +24,7 @@ class ASTDump : public Visitor
 				CXCursor parent);
 
 		virtual void report(std::ostream &) const;
+		virtual void collect(ResultContainer &) const;
 
 		static void register_in(VisitorFactory &);
 };
