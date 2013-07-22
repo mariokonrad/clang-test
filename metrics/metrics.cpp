@@ -87,7 +87,8 @@ static CXTranslationUnit process_file(
 		const std::string & filename,
 		const std::vector<std::string> & arguments)
 {
-	// adapt to libclang interface
+	// adapt to libclang interface, to do this for every file is a bit overhead
+	// but this way the interface is easier and the overhead does not bother.
 	char ** argv = new char* [arguments.size()];
 	for (size_t i = 0; i < arguments.size(); ++i) {
 		argv[i] = const_cast<char *>(arguments[i].c_str());
@@ -130,13 +131,12 @@ int main(int argc, char ** argv)
 	// command line options
 
 	Options options;
-
 	if (parse_options(options, argc, argv) != EXIT_SUCCESS)
 		return EXIT_FAILURE;
 
 	std::vector<std::string> arguments =
 	{
-		"-std=c++11",
+		"-std=c++11", // always C++11
 	};
 	for (auto i : options.value_include)
 		arguments.push_back(std::string("-I") + i);
