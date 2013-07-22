@@ -17,8 +17,7 @@ CXChildVisitResult Visitor::visitor_recursive(
 		CXCursor parent,
 		CXClientData data)
 {
-	Visitor * visitor = visitor_cast(data);
-	return visitor->visit(cursor, parent);
+	return visitor_cast(data)->visit(cursor, parent);
 }
 
 std::string Visitor::namespace_for(CXCursor cursor) const

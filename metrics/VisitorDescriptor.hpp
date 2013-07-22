@@ -9,6 +9,7 @@ class VisitorDescriptor
 		std::string id;
 		std::string name;
 		std::string description;
+		bool included_in_all;
 };
 
 #endif

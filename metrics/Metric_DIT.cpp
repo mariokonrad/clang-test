@@ -11,7 +11,8 @@ const VisitorDescriptor Metric_DIT::DESCRIPTOR =
 {
 	"DIT",
 	"Depth of Inheritance Tree",
-	""
+	"",
+	true,
 };
 
 void Metric_DIT::register_in(VisitorFactory & factory)

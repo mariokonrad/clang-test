@@ -3,6 +3,7 @@
 #include "Metric_FunctionArguments.hpp"
 #include "Metric_NumberOfMethods.hpp"
 #include "Metric_NumberOfFields.hpp"
+#include "ASTDump.hpp"
 #include "VisitorFactory.hpp"
 #include "string_split.hpp"
 #include <iostream>
@@ -56,7 +57,7 @@ static int parse_options(
 	options_processing.add_options()
 		("process",
 			value<std::string>(&options.value_visitors)->default_value("all"),
-			"comma separated selection of visitors, use 'all' to enable all")
+			"comma separated selection of visitors, use 'all' to enable all metrics (omits others)")
 		;
 
 	positional_options_description positional_options;
@@ -150,8 +151,10 @@ static int setup_visitors(
 {
 	if (options.value_visitors == "all") {
 		visitors.reserve(visitors.size() + factory.size());
-		for (auto i : factory.get_visitor_desc())
-			visitors.push_back(factory.create(i.id));
+		for (auto i : factory.get_visitor_desc()) {
+			if (i.included_in_all)
+				visitors.push_back(factory.create(i.id));
+		}
 		return EXIT_SUCCESS;
 	}
 
@@ -184,6 +187,7 @@ int main(int argc, char ** argv)
 	Metric_FunctionArguments::register_in(factory);
 	Metric_NumberOfMethods::register_in(factory);
 	Metric_NumberOfFields::register_in(factory);
+	ASTDump::register_in(factory);
 
 	// command line options
 

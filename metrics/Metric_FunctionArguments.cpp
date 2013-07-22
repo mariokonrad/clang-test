@@ -8,7 +8,8 @@ const VisitorDescriptor Metric_FunctionArguments::DESCRIPTOR =
 {
 	"NumFuncArg",
 	"Number of Funtion/Method Arguments",
-	""
+	"",
+	true,
 };
 
 void Metric_FunctionArguments::register_in(VisitorFactory & factory)

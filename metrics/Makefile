@@ -64,6 +64,7 @@ metrics : \
 		Range.o \
 		Visitor.o \
 		VisitorFactory.o \
+		ASTDump.o \
 		Metric_DIT.o \
 		Metric_NumberOfMethods.o \
 		Metric_NumberOfFields.o \

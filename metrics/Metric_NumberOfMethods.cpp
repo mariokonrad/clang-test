@@ -11,7 +11,8 @@ const VisitorDescriptor Metric_NumberOfMethods::DESCRIPTOR =
 {
 	"NumMeth",
 	"Number of Methods",
-	""
+	"",
+	true,
 };
 
 void Metric_NumberOfMethods::register_in(VisitorFactory & factory)
