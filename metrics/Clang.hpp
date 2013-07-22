@@ -11,6 +11,7 @@ class Clang
 		static std::string to_string(CXString str);
 
 		static std::string getCursorSpelling(CXCursor cursor);
+		static std::string getCursorKindSpelling(CXCursor cursor);
 
 		static CXTranslationUnit parseTranslationUnit(
 				CXIndex index,

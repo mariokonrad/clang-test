@@ -1,10 +1,10 @@
-#ifndef __METRIC_DIT__HPP__
-#define __METRIC_DIT__HPP__
+#ifndef __METRIC_NUMBEROFFIELDS__HPP__
+#define __METRIC_NUMBEROFFIELDS__HPP__
 
 #include "Visitor.hpp"
 #include <map>
 
-class Metric_DIT : public Visitor
+class Metric_NumberOfFields : public Visitor
 {
 	private:
 		struct Info
@@ -18,9 +18,7 @@ class Metric_DIT : public Visitor
 		Data data;
 
 	private:
-		unsigned int count_depth_of_inheritance_tree(CXCursor cursor) const;
-
-		static CXChildVisitResult collect_base_classes(
+		static CXChildVisitResult count_class_fields(
 				CXCursor cursor,
 				CXCursor parent,
 				CXClientData data);

@@ -1,4 +1,4 @@
-#include "Metric_DIT.hpp"
+#include "Metric_NumberOfMethods.hpp"
 #include "Clang.hpp"
 #include "Location.hpp"
 #include <iostream>
@@ -6,42 +6,26 @@
 #include <algorithm>
 #include <vector>
 
-const std::string & Metric_DIT::get_name() const
+const std::string & Metric_NumberOfMethods::get_name() const
 {
-	static const std::string NAME = "Depth of Inheritance Tree";
+	static const std::string NAME = "Number of Methods";
 	return NAME;
 }
 
-CXChildVisitResult Metric_DIT::collect_base_classes(
+CXChildVisitResult Metric_NumberOfMethods::count_class_methods(
 		CXCursor cursor,
 		CXCursor parent,
 		CXClientData data)
 {
-	std::vector<CXCursor> * base_classes = static_cast<std::vector<CXCursor> *>(data);
+	unsigned int * count = static_cast<unsigned int *>(data);
 
-	if (clang_getCursorKind(cursor) == CXCursor_CXXBaseSpecifier)
-		base_classes->push_back(clang_getCursorDefinition(cursor));
+	if (clang_getCursorKind(cursor) == CXCursor_CXXMethod)
+		*count += 1;
 
 	return CXChildVisit_Continue;
 }
 
-unsigned int Metric_DIT::count_depth_of_inheritance_tree(CXCursor cursor) const
-{
-	std::vector<CXCursor> bases;
-	unsigned int dit_max = 0;
-
-	clang_visitChildren(cursor, collect_base_classes, &bases);
-
-	for (auto base : bases) {
-		unsigned int t = 1 + count_depth_of_inheritance_tree(base);
-		if (t > dit_max)
-			dit_max = t;
-	}
-
-	return dit_max;
-}
-
-CXChildVisitResult Metric_DIT::visit(
+CXChildVisitResult Metric_NumberOfMethods::visit(
 		CXCursor cursor,
 		CXCursor parent)
 {
@@ -54,16 +38,19 @@ CXChildVisitResult Metric_DIT::visit(
 	if (data.find(usr) != data.end())
 		return CXChildVisit_Recurse;
 
+	unsigned int count = 0;
+	clang_visitChildren(cursor, count_class_methods, &count);
+
 	data[usr] =
 	{
 		cursor,
-		count_depth_of_inheritance_tree(cursor)
+		count
 	};
 
 	return CXChildVisit_Recurse;
 }
 
-void Metric_DIT::report(std::ostream & os) const
+void Metric_NumberOfMethods::report(std::ostream & os) const
 {
 	using namespace std;
 

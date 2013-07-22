@@ -13,6 +13,8 @@ CXChildVisitResult Metric_FunctionArguments::visit(
 		CXCursor cursor,
 		CXCursor parent)
 {
+	if (Location(cursor).is_in_system_header())
+		return CXChildVisit_Continue;
 	switch (Clang::getCursorKind(cursor)) {
 		case CXCursor_CXXMethod:
 		case CXCursor_FunctionDecl:
@@ -24,7 +26,7 @@ CXChildVisitResult Metric_FunctionArguments::visit(
 
 	std::string usr = Clang::getCursorUSR(cursor);
 	if (data.find(usr) != data.end())
-		return CXChildVisit_Continue;
+		return CXChildVisit_Recurse;
 
 	data[usr] =
 	{
@@ -43,7 +45,7 @@ void Metric_FunctionArguments::report(std::ostream & os) const
 
 	for (auto i : data) {
 		os
-			<< setw(2)
+			<< setw(3)
 			<< i.second.count
 			<< " "
 			<< namespace_for(i.second.cursor) << Clang::getCursorSpelling(i.second.cursor)

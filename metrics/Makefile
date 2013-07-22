@@ -19,7 +19,7 @@
 CONFIG=$(HOME)/local/llvm-3.3/bin/llvm-config
 
 CXX=$(shell $(CONFIG) --bindir)/clang++
-CXXFLAGS=$(shell $(CONFIG) --cxxflags) -std=c++11 -O2
+CXXFLAGS=$(shell $(CONFIG) --cxxflags) -std=c++11 -O2 -frtti -fexceptions
 LDFLAGS=$(shell $(CONFIG) --ldflags)
 
 CLANGLIBS=\
@@ -48,9 +48,15 @@ CLANGLIBS=\
 LIBS=\
 	-L$(shell $(CONFIG) --libdir) \
 	$(CLANGLIBS) \
+	-lboost_program_options \
 	$(shell $(CONFIG) --libs core cppbackend cppbackendinfo bitreader mcparser)
 
 all : metrics
+
+# TEST:
+#
+# ./metrics *.cpp -I. -I$HOME/local/llvm-3.3/include -I/usr/include/clang/3.2/include
+#
 
 metrics : \
 		Clang.o \
@@ -58,6 +64,8 @@ metrics : \
 		Range.o \
 		Visitor.o \
 		Metric_DIT.o \
+		Metric_NumberOfMethods.o \
+		Metric_NumberOfFields.o \
 		Metric_FunctionArguments.o \
 		metrics.o
 	$(CXX) -o $@ $^ $(LIBS) $(LDFLAGS)

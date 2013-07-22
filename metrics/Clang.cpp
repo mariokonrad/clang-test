@@ -16,6 +16,11 @@ std::string Clang::getCursorSpelling(CXCursor cursor)
 	return to_string(clang_getCursorSpelling(cursor));
 }
 
+std::string Clang::getCursorKindSpelling(CXCursor cursor)
+{
+	return to_string(clang_getCursorKindSpelling(clang_getCursorKind(cursor)));
+}
+
 CXTranslationUnit Clang::parseTranslationUnit(
 		CXIndex index,
 		const std::string & source_filename,
