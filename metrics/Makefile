@@ -69,6 +69,7 @@ metrics : \
 		Metric_NumberOfMethods.o \
 		Metric_NumberOfFields.o \
 		Metric_FunctionArguments.o \
+		Metric_NestedDepth.o \
 		metrics.o
 	$(CXX) -o $@ $^ $(LIBS) $(LDFLAGS)
 

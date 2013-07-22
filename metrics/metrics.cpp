@@ -3,6 +3,7 @@
 #include "Metric_FunctionArguments.hpp"
 #include "Metric_NumberOfMethods.hpp"
 #include "Metric_NumberOfFields.hpp"
+#include "Metric_NestedDepth.hpp"
 #include "ASTDump.hpp"
 #include "VisitorFactory.hpp"
 #include "string_split.hpp"
@@ -79,6 +80,7 @@ static int parse_options(
 		if (vm.count("help")) {
 			using namespace std;
 
+			cout << endl;
 			cout << "usage: " << argv[0] << " [options] files-to-parse" << endl << endl;
 			cout << "Parses metrics from specified files." << endl << endl;
 			cout << cli_options << endl;
@@ -187,6 +189,7 @@ int main(int argc, char ** argv)
 	Metric_FunctionArguments::register_in(factory);
 	Metric_NumberOfMethods::register_in(factory);
 	Metric_NumberOfFields::register_in(factory);
+	Metric_NestedDepth::register_in(factory);
 	ASTDump::register_in(factory);
 
 	// command line options
