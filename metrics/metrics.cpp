@@ -195,6 +195,11 @@ int main(int argc, char ** argv)
 	if (parse_options(options, argc, argv, factory) != EXIT_SUCCESS)
 		return EXIT_FAILURE;
 
+	if (options.value_inputfiles.empty()) {
+		std::cerr << "error: no input files specified" << std::endl;
+		return EXIT_FAILURE;
+	}
+
 	std::vector<std::string> arguments =
 	{
 		"-std=c++11", // always C++11
