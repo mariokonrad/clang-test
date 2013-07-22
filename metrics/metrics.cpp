@@ -3,7 +3,9 @@
 #include "Metric_FunctionArguments.hpp"
 #include "Metric_NumberOfMethods.hpp"
 #include "Metric_NumberOfFields.hpp"
+#include "string_split.hpp"
 #include <iostream>
+#include <iomanip>
 #include <string>
 #include <vector>
 #include <boost/program_options.hpp>
@@ -14,9 +16,13 @@ struct Options
 	std::vector<std::string> value_include;
 	std::vector<std::string> value_define;
 	std::vector<std::string> value_inputfiles;
+	std::string value_visitors;
 };
 
-static int parse_options(Options & options, int argc, char ** argv)
+static int parse_options(
+		Options & options,
+		int argc, char ** argv,
+		const std::vector<Visitor *> & available_visitors)
 {
 	using namespace boost::program_options;
 
@@ -45,6 +51,13 @@ static int parse_options(Options & options, int argc, char ** argv)
 			"file to process")
 		;
 
+	options_description options_processing("Processing Options");
+	options_processing.add_options()
+		("process",
+			value<std::string>(&options.value_visitors)->composing(),
+			"comma separated selection of visitors, use 'all' to enable all")
+		;
+
 	positional_options_description positional_options;
 	positional_options.add("input-file", -1);
 
@@ -52,6 +65,7 @@ static int parse_options(Options & options, int argc, char ** argv)
 	cli_options.add(options_generic);
 	cli_options.add(options_preproc);
 	cli_options.add(options_input);
+	cli_options.add(options_processing);
 
 	variables_map vm;
 	try {
@@ -66,6 +80,16 @@ static int parse_options(Options & options, int argc, char ** argv)
 			cout << "usage: " << argv[0] << " [options] files-to-parse" << endl << endl;
 			cout << "Parses metrics from specified files." << endl << endl;
 			cout << cli_options << endl;
+			cout << "Available Visitors:" << endl;
+			for (auto v : available_visitors)
+				cout
+					<< "  "
+					<< left << setw(15)
+					<< v->get_id()
+					<< " : "
+					<< v->get_name()
+					<< endl;
+			cout << endl;
 			return EXIT_FAILURE;
 		}
 
@@ -120,18 +144,20 @@ static CXTranslationUnit process_file(
 
 int main(int argc, char ** argv)
 {
-	// available metrics
+	// available visitors: TODO: register factories
 
-	std::vector<Visitor *> visitors;
-	visitors.push_back(new Metric_DIT);
-	visitors.push_back(new Metric_NumberOfMethods);
-	visitors.push_back(new Metric_NumberOfFields);
-	visitors.push_back(new Metric_FunctionArguments);
+	std::vector<Visitor *> available_visitors =
+	{
+		new Metric_DIT,
+		new Metric_NumberOfMethods,
+		new Metric_NumberOfFields,
+		new Metric_FunctionArguments,
+	};
 
 	// command line options
 
 	Options options;
-	if (parse_options(options, argc, argv) != EXIT_SUCCESS)
+	if (parse_options(options, argc, argv, available_visitors) != EXIT_SUCCESS)
 		return EXIT_FAILURE;
 
 	std::vector<std::string> arguments =
@@ -143,13 +169,38 @@ int main(int argc, char ** argv)
 	for (auto i : options.value_define)
 		arguments.push_back(std::string("-D") + i);
 
+	// visitor selection
+
+	std::vector<Visitor *> visitors;
+	if (options.value_visitors == "all") {
+		visitors = available_visitors;
+	} else {
+		std::vector<std::string> visitor_ids;
+		utils::split(visitor_ids, options.value_visitors, ",");
+		for (auto id : visitor_ids) {
+			auto v = find_if(
+				begin(available_visitors),
+				end(available_visitors),
+				[id](const Visitor * visitor)
+			{
+				return id == visitor->get_id();
+			});
+			if (v != end(available_visitors))
+				visitors.push_back(*v);
+		}
+	}
+
 	// process files
 
 	CXIndex index = clang_createIndex(0, 1);
 
 	std::vector<CXTranslationUnit> translationunits;
-	for (auto filename : options.value_inputfiles)
-		translationunits.push_back(process_file(visitors, index, filename, arguments));
+	for (auto filename : options.value_inputfiles) {
+		CXTranslationUnit tu = process_file(
+			visitors, index,
+			filename, arguments);
+		translationunits.push_back(tu);
+	}
 
 	for (auto visitor : visitors)
 		visitor->report(std::cout);

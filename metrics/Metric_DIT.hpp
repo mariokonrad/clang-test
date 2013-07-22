@@ -27,6 +27,7 @@ class Metric_DIT : public Visitor
 
 	public:
 		virtual const std::string & get_name() const;
+		virtual const std::string & get_id() const;
 
 		virtual CXChildVisitResult visit(
 				CXCursor cursor,

@@ -12,6 +12,12 @@ const std::string & Metric_DIT::get_name() const
 	return NAME;
 }
 
+const std::string & Metric_DIT::get_id() const
+{
+	static const std::string ID = "DIT";
+	return ID;
+}
+
 CXChildVisitResult Metric_DIT::collect_base_classes(
 		CXCursor cursor,
 		CXCursor parent,

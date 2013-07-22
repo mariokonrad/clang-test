@@ -12,6 +12,12 @@ const std::string & Metric_NumberOfFields::get_name() const
 	return NAME;
 }
 
+const std::string & Metric_NumberOfFields::get_id() const
+{
+	static const std::string ID = "NumFields";
+	return ID;
+}
+
 CXChildVisitResult Metric_NumberOfFields::count_class_fields(
 		CXCursor cursor,
 		CXCursor parent,

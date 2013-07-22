@@ -9,6 +9,12 @@ const std::string & Metric_FunctionArguments::get_name() const
 	return NAME;
 }
 
+const std::string & Metric_FunctionArguments::get_id() const
+{
+	static const std::string ID = "NumFuncArg";
+	return ID;
+}
+
 CXChildVisitResult Metric_FunctionArguments::visit(
 		CXCursor cursor,
 		CXCursor parent)

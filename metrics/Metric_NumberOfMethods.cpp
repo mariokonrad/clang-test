@@ -12,6 +12,12 @@ const std::string & Metric_NumberOfMethods::get_name() const
 	return NAME;
 }
 
+const std::string & Metric_NumberOfMethods::get_id() const
+{
+	static const std::string ID = "NumMeth";
+	return ID;
+}
+
 CXChildVisitResult Metric_NumberOfMethods::count_class_methods(
 		CXCursor cursor,
 		CXCursor parent,
