@@ -16,7 +16,7 @@
 # make install
 #
 
-CONFIG=$(HOME)/local/llvm-3.3/bin/llvm-config
+CONFIG=`which llvm-config-3.8`
 
 CXX=$(shell $(CONFIG) --bindir)/clang++
 CXXFLAGS=$(shell $(CONFIG) --cxxflags) -std=c++11 -O2 -frtti -fexceptions
@@ -40,16 +40,17 @@ CLANGLIBS=\
 	-lclangLex \
 	-lclangDriver \
 	-lclangSerialization \
-	-lclangRewriteCore \
-	-lclangCodeGen \
+	-lclangRewrite \
 	-lclangRewriteFrontend \
+	-lclangCodeGen \
 	-lclangBasic
 
 LIBS=\
 	-L$(shell $(CONFIG) --libdir) \
 	$(CLANGLIBS) \
 	-lboost_program_options \
-	$(shell $(CONFIG) --libs core cppbackend cppbackendinfo bitreader mcparser)
+	$(shell $(CONFIG) --libs core cppbackend cppbackendinfo bitreader mcparser) \
+	-ltinfo -lz -ldl -lpthread
 
 all : metrics
 

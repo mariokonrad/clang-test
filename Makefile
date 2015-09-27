@@ -16,7 +16,7 @@
 # make install
 #
 
-CONFIG=$(HOME)/local/llvm-3.3/bin/llvm-config
+CONFIG=`which llvm-config-3.8`
 
 CXX=$(shell $(CONFIG) --bindir)/clang++
 CXXFLAGS=$(shell $(CONFIG) --cxxflags) -std=c++11 -O2
@@ -40,20 +40,24 @@ CLANGLIBS=\
 	-lclangLex \
 	-lclangDriver \
 	-lclangSerialization \
-	-lclangRewriteCore \
-	-lclangCodeGen \
+	-lclangRewrite \
 	-lclangRewriteFrontend \
+	-lclangCodeGen \
 	-lclangBasic
 
 LIBS=\
 	-L$(shell $(CONFIG) --libdir) \
 	$(CLANGLIBS) \
-	$(shell $(CONFIG) --libs core cppbackend cppbackendinfo bitreader mcparser)
+	$(shell $(CONFIG) --libs) \
+	-L/lib64 \
+	-ltinfo -lz -ldl -lpthread
+
+#
+#	$(shell $(CONFIG) --libs core cppbackend cppbackendinfo bitreader mcparser) \
+#
+#
 
 all : ctest tool matcher
-
-metrics : metrics.o
-	$(CXX) -o $@ $^ $(LIBS) $(LDFLAGS)
 
 matcher : matcher.o
 	$(CXX) -o $@ $^ $(LIBS) $(LDFLAGS)
@@ -66,7 +70,9 @@ tool : tool.o
 
 clean :
 	rm -f *.o
-	rm -f ctest tool matcher
+	rm -f ctest
+	rm -f tool
+	rm -f matcher
 
 %.o : %.cpp
 	$(CXX) $(CXXFLAGS) -o $@ -c $<

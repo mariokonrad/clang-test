@@ -36,7 +36,8 @@ class LoopPrinter : public MatchFinder::MatchCallback
 
 int main(int argc, const char ** argv)
 {
-	CommonOptionsParser OptionsParser(argc, argv);
+	llvm::cl::OptionCategory category("Options");
+	CommonOptionsParser OptionsParser(argc, argv, category);
 	ClangTool tool(
 			OptionsParser.getCompilations(),
 			OptionsParser.getSourcePathList());
@@ -47,6 +48,8 @@ int main(int argc, const char ** argv)
 	MatchFinder finder;
 	finder.addMatcher(loopMatcher, &printer);
 
-	return tool.run(newFrontendActionFactory(&finder));
+	auto factory = newFrontendActionFactory(&finder);
+
+	return tool.run(factory.get());
 }
 

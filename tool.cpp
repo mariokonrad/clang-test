@@ -85,7 +85,7 @@ class TestConsumer : public clang::ASTConsumer
 				std::cout << "    "
 					<< i->getDeclName().getAsString()
 					<< " -> "
-					<< i->getResultType().getAsString()
+					<< i->getReturnType().getAsString()
 					<< " (has body:" << i->hasBody() << ")"
 					<< std::endl;
 				dump_function_parameters(*i);
@@ -159,11 +159,12 @@ class TestConsumer : public clang::ASTConsumer
 class TestFrontendAction : public clang::ASTFrontendAction
 {
 	public:
-		virtual clang::ASTConsumer * CreateASTConsumer(
+		virtual std::unique_ptr<clang::ASTConsumer> CreateASTConsumer(
 				clang::CompilerInstance & compiler,
 				llvm::StringRef filename)
 		{
-			return new TestConsumer(&compiler.getASTContext());
+			return std::unique_ptr<clang::ASTConsumer>(
+				new TestConsumer(&compiler.getASTContext()));
 		}
 };
 
@@ -277,11 +278,12 @@ class NamespaceFrontendAction : public clang::ASTFrontendAction
 			: namespaces(namespaces)
 		{}
 
-		virtual clang::ASTConsumer * CreateASTConsumer(
+		virtual std::unique_ptr<clang::ASTConsumer> CreateASTConsumer(
 				clang::CompilerInstance & compiler,
 				llvm::StringRef filename)
 		{
-			return new NamespaceASTConsumer(&compiler.getASTContext(), namespaces);
+			return std::unique_ptr<clang::ASTConsumer>(
+				new NamespaceASTConsumer(&compiler.getASTContext(), namespaces));
 		}
 };
 
@@ -305,7 +307,8 @@ class NamespaceFrontendActionFactory : public clang::tooling::FrontendActionFact
 
 int main(int argc, const char ** argv)
 {
-	clang::tooling::CommonOptionsParser options(argc, argv);
+	llvm::cl::OptionCategory category("Options");
+	clang::tooling::CommonOptionsParser options(argc, argv, category);
 	clang::tooling::ClangTool tool(options.getCompilations(), options.getSourcePathList());
 
 	return tool.run(new TestFrontendActionFactory);
